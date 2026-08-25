@@ -22,14 +22,7 @@ def _optional_int(name: str) -> int | None:
 
 
 def _database_url() -> str:
-    value = os.getenv("DATABASE_URL", "").strip()
-    if not value:
-        return "sqlite+aiosqlite:///sapphire.sqlite3"
-    if value.startswith("postgres://"):
-        return "postgresql+asyncpg://" + value.removeprefix("postgres://")
-    if value.startswith("postgresql://"):
-        return "postgresql+asyncpg://" + value.removeprefix("postgresql://")
-    return value
+    return "sqlite+aiosqlite:///sapphire.sqlite3"
 
 
 settings = Settings(
@@ -37,6 +30,6 @@ settings = Settings(
     client_id=_optional_int("CLIENT_ID"),
     client_secret=os.getenv("CLIENT_SECRET") or None,
     database_url=_database_url(),
-    log_level=os.getenv("LOG_LEVEL", "INFO"),
-    command_sync_guild_id=_optional_int("COMMAND_SYNC_GUILD_ID"),
+    log_level="INFO",
+    command_sync_guild_id=None,
 )
