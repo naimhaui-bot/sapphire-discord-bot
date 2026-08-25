@@ -1,1 +1,0 @@
-git push -u https://o3DMy4:Ff78JjMy42SkLm6@justrunmy.app/git/r_c4QLr HEAD:deploy
