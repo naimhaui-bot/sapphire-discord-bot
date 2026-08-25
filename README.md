@@ -67,8 +67,6 @@ Welcome variables are `{user}`, `{username}`, `{server}`, `{memberCount}`, and
 | Variable | Required | Description |
 |---|---:|---|
 | `DISCORD_TOKEN` | Yes | Token of the Discord bot application. |
-| `CLIENT_ID` | No | Discord application client ID. |
-| `CLIENT_SECRET` | No | Discord application client secret. |
 
 The bot uses the local SQLite file `sapphire.sqlite3`. Enable persistent storage in Wisbyte if the database must survive restarts or redeployments. Restart the service and check the logs for `Database initialized` and `Synced global application commands`.
 
