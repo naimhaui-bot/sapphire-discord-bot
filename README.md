@@ -31,7 +31,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Set `DISCORD_TOKEN` in `.env`, then start:
+Set `DISCORD_TOKEN`, `CLIENT_ID`, and `CLIENT_SECRET` in `.env`, then start:
 
 ```bash
 python bot.py
@@ -67,6 +67,8 @@ Welcome variables are `{user}`, `{username}`, `{server}`, `{memberCount}`, and
 | Variable | Required | Description |
 |---|---:|---|
 | `DISCORD_TOKEN` | Yes | Token of the Discord bot application. |
+| `CLIENT_ID` | No | Discord application/client ID, used by the dashboard integration. |
+| `CLIENT_SECRET` | No | Discord OAuth client secret, used only by the dashboard integration. |
 
 The bot uses the local SQLite file `sapphire.sqlite3`. Enable persistent storage in Wisbyte if the database must survive restarts or redeployments. Restart the service and check the logs for `Database initialized` and `Synced global application commands`.
 
