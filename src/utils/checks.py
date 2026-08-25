@@ -2,11 +2,11 @@ import discord
 from discord import app_commands
 
 
-def administrator():
+def administrator() -> app_commands.Check:
     return app_commands.checks.has_permissions(administrator=True)
 
 
-def moderator():
+def moderator() -> app_commands.Check:
     async def predicate(interaction: discord.Interaction) -> bool:
         member = interaction.user
         return isinstance(member, discord.Member) and (
@@ -16,7 +16,6 @@ def moderator():
             or member.guild_permissions.ban_members
             or member.guild_permissions.administrator
         )
-
     return app_commands.check(predicate)
 
 

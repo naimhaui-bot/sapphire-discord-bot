@@ -1,1 +1,1 @@
-"""Sapphire bot package."""
+"""Discord command cogs."""
