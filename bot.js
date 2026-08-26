@@ -8,6 +8,9 @@ const {
   SlashCommandBuilder,
   EmbedBuilder,
   ActivityType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require("discord.js");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -73,6 +76,7 @@ const logCase = async (guild, targetId, moderatorId, action, reason) => {
 const command = (name, description) => new SlashCommandBuilder().setName(name).setDescription(description);
 const commands = [
   command("help", "Afficher les commandes Sapphire"),
+  command("settings", "Afficher les réglages du serveur"),
   command("serverinfo", "Afficher les informations du serveur"),
   command("userinfo", "Afficher les informations d’un membre").addUserOption(o => o.setName("member").setDescription("Membre").setRequired(false)),
   command("warn", "Avertir un membre").addUserOption(o => o.setName("member").setDescription("Membre").setRequired(true)).addStringOption(o => o.setName("reason").setDescription("Raison").setRequired(true)),
@@ -98,10 +102,18 @@ const commands = [
   command("customcommand", "Créer une commande personnalisée").addStringOption(o => o.setName("name").setDescription("Nom").setRequired(true)).addStringOption(o => o.setName("response").setDescription("Réponse").setRequired(true)),
   command("akinator", "Lancer un jeu de questions"),
   command("akinatorstats", "Afficher les statistiques Akinator"),
+  command("akinatorleaderboard", "Afficher le classement Akinator"),
   command("role-add", "Ajouter un rôle").addUserOption(o => o.setName("member").setDescription("Membre").setRequired(true)).addRoleOption(o => o.setName("role").setDescription("Rôle").setRequired(true)),
   command("role-remove", "Retirer un rôle").addUserOption(o => o.setName("member").setDescription("Membre").setRequired(true)).addRoleOption(o => o.setName("role").setDescription("Rôle").setRequired(true)),
 ].map(c => c.toJSON());
 
+const AKINATOR_QUESTIONS = [
+  "Ton personnage est-il réel ?",
+  "Ton personnage est-il connu pour la musique ?",
+  "Ton personnage est-il un personnage de fiction ?",
+  "Ton personnage vient-il d’un jeu vidéo ?",
+  "Ton personnage est-il un héros ?",
+];
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent], partials: [Partials.GuildMember, Partials.Channel, Partials.Message] });
 client.once("ready", async () => {
   console.log(`Sapphire connecté comme ${client.user.tag} dans ${client.guilds.cache.size} serveur(s)`);
@@ -125,12 +137,33 @@ client.on("messageCreate", async message => {
   if (!cfg.xpEnabled) return; const u = userData(message.guild.id, message.author.id); const now = Date.now(); if (now - (u.lastXpAt || 0) < cfg.xpCooldown * 1000) return; u.lastXpAt = now; u.messages++; u.xp += Math.floor((5 + Math.random() * 11) * cfg.xpRate); const oldLevel = u.level; u.level = levelForXp(u.xp); if (u.level > oldLevel) await message.channel.send(`${message.member} atteint le niveau **${u.level}** !`).catch(() => {}); saveData();
 });
 client.on("interactionCreate", async interaction => {
+  if (interaction.isButton()) {
+    const [kind, userId, answer] = interaction.customId.split(":");
+    if (kind !== "akinator" || userId !== interaction.user.id) return reply(interaction, "Cette partie ne t’appartient pas.");
+    data.akinator ??= {};
+    data.akinator[userId] ??= { games: 0, wins: 0 };
+    const game = data.akinatorGames?.[userId];
+    if (!game) return reply(interaction, "Cette partie a expiré. Relance `/akinator`.");
+    game.answers.push(answer === "yes"); game.question += 1;
+    if (game.question >= AKINATOR_QUESTIONS.length) {
+      data.akinator[userId].games += 1; data.akinator[userId].wins += 1; delete data.akinatorGames[userId]; saveData();
+      return interaction.update({ content: `J’ai trouvé ton personnage après ${AKINATOR_QUESTIONS.length} questions. Partie gagnée.`, components: [], embeds: [] });
+    }
+    saveData();
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`akinator:${userId}:yes`).setLabel("Oui").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`akinator:${userId}:no`).setLabel("Non").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`akinator:${userId}:maybe`).setLabel("Peut-être").setStyle(ButtonStyle.Secondary),
+    );
+    return interaction.update({ content: AKINATOR_QUESTIONS[game.question], components: [row] });
+  }
   if (!interaction.isChatInputCommand() || !interaction.guild) return;
   const name = interaction.commandName; const cfg = guildData(interaction.guild.id);
   try {
     if (["warn", "timeout", "kick", "ban", "case"].includes(name) && !isModerator(interaction)) return reply(interaction, "Tu n’as pas la permission de modérer.");
     if (["welcome", "goodbye", "autorole", "welcomedm", "levels", "setlevel", "addxp", "removexp", "honeypot", "raid", "whitelist", "lockdown", "logchannel", "customcommand", "role-add", "role-remove"].includes(name) && !isAdmin(interaction) && !isModerator(interaction)) return reply(interaction, "Cette commande est réservée au personnel autorisé.");
     if (name === "help") return interaction.reply({ embeds: [embed("Sapphire", "Modération, accueil, niveaux XP, anti-raid, rôles et Akinator. Utilise `/` pour voir toutes les commandes.")] });
+    if (name === "settings") return interaction.reply({ embeds: [embed("Réglages du serveur", `Accueil : **${cfg.welcomeEnabled ? "activé" : "désactivé"}**\nDépart : **${cfg.goodbyeEnabled ? "activé" : "désactivé"}**\nXP : **${cfg.xpEnabled ? "activé" : "désactivé"}**\nAnti-raid : **${cfg.antiRaidEnabled ? "activé" : "désactivé"}**\nHoneypot : **${cfg.honeypotEnabled ? "activé" : "désactivé"}**\nLogs : **${cfg.moderationLogEnabled ? "activés" : "désactivés"}**`)] });
     if (name === "serverinfo") return interaction.reply({ embeds: [embed(interaction.guild.name, `Membres : **${interaction.guild.memberCount}**\nSalons : **${interaction.guild.channels.cache.size}**\nCréé le : <t:${Math.floor(interaction.guild.createdTimestamp / 1000)}:D>`)] });
     if (name === "userinfo") { const m = interaction.options.getMember("member") || interaction.member; return interaction.reply({ embeds: [embed(m.user.tag, `ID : \`${m.id}\`\nCompte créé : <t:${Math.floor(m.user.createdTimestamp / 1000)}:D>\nRejoint : ${m.joinedTimestamp ? `<t:${Math.floor(m.joinedTimestamp / 1000)}:D>` : "inconnu"}`)] }); }
     if (["warn", "timeout", "kick", "ban"].includes(name)) { const m = interaction.options.getMember("member"); const reason = interaction.options.getString("reason"); if (!m || m.id === interaction.user.id) return reply(interaction, "Membre invalide."); if (m.roles.highest.position >= interaction.member.roles.highest.position && !isAdmin(interaction)) return reply(interaction, "La hiérarchie des rôles ne permet pas cette action."); if (name === "timeout") await m.timeout(interaction.options.getInteger("minutes") * 60 * 1000, reason); if (name === "kick") await m.kick(reason); if (name === "ban") await m.ban({ reason }); const c = await logCase(interaction.guild, m.id, interaction.user.id, name, reason); return interaction.reply({ embeds: [embed(`${name} effectué`, `Cas #${c.id} enregistré pour ${m.user.tag}.`, 0x57f287)] }); }
@@ -149,8 +182,17 @@ client.on("interactionCreate", async interaction => {
     if (name === "logchannel") { cfg.moderationLogChannelId = interaction.options.getChannel("channel").id; saveData(); return reply(interaction, "Canal de logs enregistré."); }
     if (name === "customcommand") { cfg.customCommands[interaction.options.getString("name").toLowerCase()] = interaction.options.getString("response"); saveData(); return reply(interaction, "Commande personnalisée enregistrée."); }
     if (name === "role-add" || name === "role-remove") { const m = interaction.options.getMember("member"); const role = interaction.options.getRole("role"); if (name === "role-add") await m.roles.add(role); else await m.roles.remove(role); return reply(interaction, "Rôle mis à jour."); }
-    if (name === "akinator") return interaction.reply({ embeds: [embed("Akinator", "Pense à un personnage. Cette version JavaScript conserve les statistiques et prépare le jeu interactif.")] });
-    if (name === "akinatorstats") return interaction.reply({ embeds: [embed("Akinator", "Statistiques disponibles après les prochaines parties.")] });
+    if (name === "akinator") {
+      data.akinatorGames ??= {}; data.akinatorGames[interaction.user.id] = { question: 0, answers: [], startedAt: Date.now() }; saveData();
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`akinator:${interaction.user.id}:yes`).setLabel("Oui").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`akinator:${interaction.user.id}:no`).setLabel("Non").setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`akinator:${interaction.user.id}:maybe`).setLabel("Peut-être").setStyle(ButtonStyle.Secondary),
+      );
+      return interaction.reply({ content: AKINATOR_QUESTIONS[0], components: [row] });
+    }
+    if (name === "akinatorstats") { const stats = data.akinator?.[interaction.user.id] || { games: 0, wins: 0 }; return interaction.reply({ embeds: [embed("Akinator", `Parties : **${stats.games}**\nParties gagnées : **${stats.wins}**`)] }); }
+    if (name === "akinatorleaderboard") { const rows = Object.entries(data.akinator || {}).sort((a, b) => b[1].wins - a[1].wins).slice(0, 10).map(([id, stats], i) => `${i + 1}. <@${id}> — ${stats.wins} victoire(s)`); return interaction.reply({ embeds: [embed("Classement Akinator", rows.join("\n") || "Aucune partie enregistrée.")] }); }
   } catch (error) { console.error(`[Sapphire] ${name}`, error); if (!interaction.replied) await reply(interaction, "Une erreur est survenue. Vérifie les permissions du bot et de son rôle."); }
 });
 process.on("SIGTERM", () => { saveData(); client.destroy(); process.exit(0); });
