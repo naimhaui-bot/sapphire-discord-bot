@@ -2,8 +2,8 @@ import logging
 from datetime import timedelta
 
 import discord
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.database import JsonDatabase
 from src.models import ModerationCase, Warning
 from src.services.settings import get_config
 
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 async def record_case(
-    database: AsyncSession,
+    database: JsonDatabase,
     guild: discord.Guild,
     target_id: int,
     moderator_id: int,
@@ -27,7 +27,6 @@ async def record_case(
     )
     database.add(case)
     await database.commit()
-    await database.refresh(case)
     config = await get_config(database, guild.id)
     if config.moderation_log_channel_id:
         channel = guild.get_channel(config.moderation_log_channel_id)
@@ -47,14 +46,17 @@ async def record_case(
 
 
 async def add_warning(
-    database: AsyncSession, guild: discord.Guild, target: discord.Member, moderator: discord.Member, reason: str
+    database: JsonDatabase,
+    guild: discord.Guild,
+    target: discord.Member,
+    moderator: discord.Member,
+    reason: str,
 ) -> Warning:
     warning = Warning(
         guild_id=guild.id, user_id=target.id, moderator_id=moderator.id, reason=reason
     )
     database.add(warning)
     await database.commit()
-    await database.refresh(warning)
     await record_case(database, guild, target.id, moderator.id, "warning", reason)
     return warning
 

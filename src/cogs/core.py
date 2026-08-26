@@ -1,8 +1,6 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from sqlalchemy import select
-
 from src.database import SessionLocal
 from src.models import GuildConfig
 from src.services.settings import get_config, update_config

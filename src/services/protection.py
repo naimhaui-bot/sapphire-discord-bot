@@ -3,15 +3,14 @@ from collections import defaultdict, deque
 from datetime import timedelta
 
 import discord
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from src.database import JsonDatabase
 from src.services.moderation import record_case
 from src.services.settings import get_config
 
 _join_times: dict[int, deque[float]] = defaultdict(deque)
 
 
-async def is_staff_or_whitelisted(database: AsyncSession, member: discord.Member) -> bool:
+async def is_staff_or_whitelisted(database: JsonDatabase, member: discord.Member) -> bool:
     config = await get_config(database, member.guild.id)
     return (
         member.id in (config.whitelist or [])
@@ -20,7 +19,7 @@ async def is_staff_or_whitelisted(database: AsyncSession, member: discord.Member
     )
 
 
-async def register_join(database: AsyncSession, member: discord.Member) -> bool:
+async def register_join(database: JsonDatabase, member: discord.Member) -> bool:
     config = await get_config(database, member.guild.id)
     now = time.monotonic()
     joins = _join_times[member.guild.id]
@@ -31,7 +30,7 @@ async def register_join(database: AsyncSession, member: discord.Member) -> bool:
 
 
 async def punish(
-    database: AsyncSession,
+    database: JsonDatabase,
     member: discord.Member,
     action: str,
     reason: str,
