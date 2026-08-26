@@ -1,53 +1,85 @@
-# Sapphire Discord Bot
+# Sapphire
 
-Sapphire est un bot Discord modulaire écrit en **JavaScript avec Node.js et discord.js**. Il fournit la modération, les messages d’accueil et de départ, les niveaux XP, la protection anti-raid, les rôles, le honeypot et les commandes Akinator.
+Sapphire is a modular, production-oriented Discord moderation, welcome, leveling,
+anti-raid, and interactive game bot built with Python and `discord.py`.
 
-## Démarrage Wispbyte
+## Features
 
-Le fichier principal à sélectionner dans Wispbyte est :
+- Slash commands with permission and role-hierarchy checks
+- Moderation cases, warnings, timeout, kick, ban, user information, and logs
+- Per-server welcome, goodbye, embeds, DMs, auto-role, and message variables
+- Persistent Arcane-style XP, levels, cooldowns, leaderboards, and staff XP tools
+- Honeypot channels, join-rate anti-raid protection, lockdown, and whitelist bypasses
+- Akinator-style interactive character game with buttons and persistent statistics
+- Local SQLite storage through SQLAlchemy and `aiosqlite`
+- Graceful shutdown, structured logging, environment-only secrets, and CI
 
-```text
-bot.js
-```
+## Requirements
 
-La commande de démarrage est :
+- Python 3.11+
+- A Discord application with a bot user
+- PostgreSQL 14+ for production
+- Message Content and Server Members privileged intents enabled in the Discord Developer Portal
+
+## Local installation
 
 ```bash
-node bot.js
+git clone https://github.com/your-org/sapphire.git
+cd sapphire
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
-Le dépôt est public et ne nécessite pas de token GitHub pour le clonage. La commande d’installation est :
+Set `DISCORD_TOKEN`, `CLIENT_ID`, and `CLIENT_SECRET` in Wispbyte, then start:
 
 ```bash
-npm install
+python bot.py
 ```
 
-## Variables d’environnement
+Sapphire uses the local SQLite file `sapphire.sqlite3`; no database variable is required.
 
-Configure exactement ces trois variables dans le panneau Wispbyte :
+Invite the bot with the `bot` and `applications.commands` scopes. Required
+permissions depend on enabled features: View Channels, Send Messages, Embed
+Links, Read Message History, Manage Messages, Moderate Members, Kick Members,
+Ban Members, and Manage Roles.
 
-| Variable | Utilisation |
-|---|---|
-| `DISCORD_TOKEN` | Token privé du bot Discord ; obligatoire pour la connexion |
-| `CLIENT_ID` | Identifiant de l’application Discord |
-| `CLIENT_SECRET` | Secret OAuth utilisé par l’intégration du dashboard |
+## Commands
 
-Ne publie jamais la valeur de `DISCORD_TOKEN` dans GitHub, le README ou le chat.
+- Core: `/help`, `/settings`, `/logchannel`, `/customcommand`
+- Moderation: `/warn`, `/timeout`, `/kick`, `/ban`, `/case`, `/userinfo`, `/serverinfo`
+- Welcome: `/welcome`, `/goodbye`, `/autorole`, `/welcomedm`
+- Arcane: `/rank`, `/levels`, `/leaderboard`, `/setlevel`, `/addxp`, `/removexp`
+- Honeypot: `/honeypot`, `/raid`, `/whitelist`, `/lockdown`
+- Game: `/akinator`, `/akinatorstats`, `/akinatorleaderboard`
 
-## Discord Developer Portal
+Welcome variables are `{user}`, `{username}`, `{server}`, `{memberCount}`, and
+`{mention}`. Unknown variables remain unchanged.
 
-Active les intents privilégiés **Server Members Intent** et **Message Content Intent**. Le bot doit avoir les permissions nécessaires aux fonctions activées : voir les salons, envoyer des messages, intégrer des liens, gérer les messages, modérer les membres, expulser, bannir et gérer les rôles.
+## Wisbyte deployment
 
-## Structure
+1. Use the `python_3.11` Docker image.
+2. Connect the public GitHub repository.
+3. Set the main file to `bot.py`.
+4. Use `python bot.py` as the startup command.
+5. Install dependencies with `pip install -r requirements.txt`.
+6. Configure only `DISCORD_TOKEN`, `CLIENT_ID`, and `CLIENT_SECRET` in Environment.
+7. Restart after saving the variables and inspect the application logs for `Sapphire is ready`.
 
-```text
-bot.js             # point d’entrée Node.js
-package.json       # dépendance discord.js et script start
-sapphire-data.json # créé automatiquement pour les données locales
-```
+Sapphire has no hard-coded paths, opens one managed database engine, handles SIGTERM
+through the asyncio process lifecycle, and closes the database pool during shutdown.
 
-Les données locales sont enregistrées dans `sapphire-data.json`. Ce fichier est ignoré par Git et doit être conservé sur un stockage persistant si Wispbyte le permet.
+## Security
 
-## Commandes
+Secrets are never committed; `.env` is ignored. The bot validates user-controlled
+lengths, checks Discord permissions and role hierarchy, excludes administrators,
+owners, and whitelisted users from automated punishment, and sets restrictive
+allowed mentions. Keep the bot role below server-owner/admin roles and enable only
+the permissions required by your server.
 
-Le bot enregistre des commandes slash pour l’aide, les informations serveur et membre, la modération, l’accueil, les niveaux XP, le classement, l’anti-raid, les rôles, les logs, les commandes personnalisées et Akinator.
+## GitHub
+
+A minimal CI workflow is included in `.github/workflows/ci.yml`. It validates Python
+syntax and dependency installation without requiring Discord credentials or a live
+database.
