@@ -118,6 +118,16 @@ const AKINATOR_QUESTIONS = [
   "Ton personnage vient-il d’un jeu vidéo ?",
   "Ton personnage est-il un héros ?",
 ];
+const AKINATOR_CANDIDATES = [
+  { name: "Taylor Swift", traits: [true, true, false, false, true] },
+  { name: "Albert Einstein", traits: [true, false, false, false, true] },
+  { name: "Mario", traits: [false, false, true, true, true] },
+  { name: "Link", traits: [false, false, true, true, true] },
+  { name: "Batman", traits: [false, false, true, false, true] },
+  { name: "Lara Croft", traits: [false, false, true, true, true] },
+  { name: "Sherlock Holmes", traits: [false, false, true, false, true] },
+  { name: "Elon Musk", traits: [true, false, false, false, false] },
+];
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent], partials: [Partials.GuildMember, Partials.Channel, Partials.Message] });
 client.once("ready", async () => {
   console.log(`Sapphire connecté comme ${client.user.tag} dans ${client.guilds.cache.size} serveur(s)`);
@@ -148,10 +158,19 @@ client.on("interactionCreate", async interaction => {
     data.akinator[userId] ??= { games: 0, wins: 0 };
     const game = data.akinatorGames?.[userId];
     if (!game) return reply(interaction, "Cette partie a expiré. Relance `/akinator`.");
-    game.answers.push(answer === "yes"); game.question += 1;
+    game.answers.push(answer); game.question += 1;
     if (game.question >= AKINATOR_QUESTIONS.length) {
+      const ranked = AKINATOR_CANDIDATES.map(candidate => ({
+        ...candidate,
+        score: candidate.traits.reduce((total, trait, index) => {
+          const response = game.answers[index];
+          const expected = trait ? "yes" : "no";
+          return total + (response === expected ? 1 : response === "maybe" ? 0.5 : 0);
+        }, 0),
+      })).sort((a, b) => b.score - a.score);
+      const guess = ranked[0];
       data.akinator[userId].games += 1; data.akinator[userId].wins += 1; delete data.akinatorGames[userId]; saveData();
-      return interaction.update({ content: `J’ai trouvé ton personnage après ${AKINATOR_QUESTIONS.length} questions. Partie gagnée.`, components: [], embeds: [] });
+      return interaction.update({ content: `Je pense que ton personnage est **${guess.name}** (score ${guess.score}/${AKINATOR_QUESTIONS.length}). Partie terminée.`, components: [], embeds: [] });
     }
     saveData();
     const row = new ActionRowBuilder().addComponents(
