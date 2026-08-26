@@ -1,0 +1,16 @@
+{
+  "name": "sapphire-discord-bot",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Bot Discord Sapphire en JavaScript",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3"
+  }
+}
