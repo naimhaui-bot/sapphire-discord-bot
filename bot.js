@@ -52,7 +52,11 @@ const loadData = () => {
   try { return JSON.parse(fs.readFileSync(DATA_FILE, "utf8")); } catch { return { guilds: {}, users: {}, cases: [], akinator: {} }; }
 };
 const data = loadData();
-const saveData = () => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+const saveData = () => {
+  const temporaryFile = `${DATA_FILE}.tmp`;
+  fs.writeFileSync(temporaryFile, JSON.stringify(data, null, 2));
+  fs.renameSync(temporaryFile, DATA_FILE);
+};
 const guildData = (guildId) => { data.guilds[guildId] ??= defaultGuild(); return data.guilds[guildId]; };
 const userData = (guildId, userId) => { data.users[guildId] ??= {}; data.users[guildId][userId] ??= { xp: 0, level: 0, messages: 0 }; return data.users[guildId][userId]; };
 const render = (text, member) => String(text || "").replaceAll("{user}", String(member)).replaceAll("{username}", member.displayName).replaceAll("{server}", member.guild.name).replaceAll("{memberCount}", String(member.guild.memberCount)).replaceAll("{mention}", member.toString());
